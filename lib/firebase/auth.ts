@@ -87,13 +87,6 @@ const registerUser = async (email: string, password: string) => {
     });
     console.log('Koleksi cerita dibuat');
 
-    // Buat koleksi silsilah kosong untuk pengguna
-    await setDoc(doc(db, 'silsilah', user.uid), {
-      userId: user.uid,
-      anggotaKeluarga: []
-    });
-    console.log('Koleksi silsilah dibuat');
-
     return { user, error: null };
   } catch (error: any) {
     console.error('Error saat registrasi:', error);
@@ -155,11 +148,6 @@ const signInWithGoogle = async () => {
         cerita: []
       });
 
-      // Buat koleksi silsilah kosong untuk pengguna
-      await setDoc(doc(db, 'silsilah', user.uid), {
-        userId: user.uid,
-        anggotaKeluarga: []
-      });
     }
 
     return { user, error: null };
@@ -321,7 +309,8 @@ const addCerita = async (userId: string, ceritaData: any) => {
     const ceritaRef = await addDoc(collection(db, 'cerita'), {
       userId,
       ...ceritaData,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      updatedAt: null  // Set to null initially, will be set when updated
     });
     console.log('Cerita berhasil ditambahkan dengan ID:', ceritaRef.id);
     return { id: ceritaRef.id, error: null };
@@ -339,8 +328,23 @@ const getUserCerita = async (userId: string) => {
     const querySnapshot = await getDocs(q);
     const ceritaList: any[] = [];
     querySnapshot.forEach((doc) => {
-      ceritaList.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      ceritaList.push({
+        id: doc.id,
+        ...data,
+        // Konversi timestamp ke Date jika perlu
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+      });
     });
+
+    // Urutkan berdasarkan createdAt (baru ke lama)
+    ceritaList.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return dateB - dateA; // Urutan terbaru dulu
+    });
+
     console.log('Jumlah cerita ditemukan:', ceritaList.length);
     return { cerita: ceritaList, error: null };
   } catch (error: any) {
@@ -357,8 +361,18 @@ const getCeritaById = async (ceritaId: string) => {
     const ceritaDocSnap = await getDoc(ceritaDocRef);
 
     if (ceritaDocSnap.exists()) {
+      const data = ceritaDocSnap.data();
       console.log('Cerita ditemukan');
-      return { cerita: { id: ceritaDocSnap.id, ...ceritaDocSnap.data() }, error: null };
+      return {
+        cerita: {
+          id: ceritaDocSnap.id,
+          ...data,
+          // Konversi timestamp ke Date jika perlu
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+        },
+        error: null
+      };
     } else {
       console.log('Cerita tidak ditemukan');
       return { cerita: null, error: 'Cerita tidak ditemukan' };
@@ -380,7 +394,11 @@ const updateCerita = async (ceritaId: string, ceritaData: any) => {
     const ceritaDocSnap = await getDoc(ceritaDocRef);
 
     if (ceritaDocSnap.exists()) {
-      await updateDoc(ceritaDocRef, ceritaData);
+      // Tambahkan timestamp untuk kapan cerita diupdate
+      await updateDoc(ceritaDocRef, {
+        ...ceritaData,
+        updatedAt: serverTimestamp()
+      });
       console.log('Cerita berhasil diperbarui');
       return { success: true, error: null };
     } else {
@@ -416,6 +434,7 @@ const deleteCerita = async (ceritaId: string) => {
   }
 };
 
+
 export {
   auth,
   db,
@@ -435,5 +454,7 @@ export {
   getUserCerita,
   getCeritaById,
   updateCerita,
-  deleteCerita
+  deleteCerita,
 };
+
+

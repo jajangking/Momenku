@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, getUserCerita, deleteCerita } from '@/lib/firebase/auth';
 import { User as FirebaseUser } from 'firebase/auth';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function CeritaPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -54,25 +56,43 @@ export default function CeritaPage() {
           </div>
 
           {ceritaList.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {ceritaList.map((cerita, index) => (
-                <div key={cerita.id || index} className="bg-pink-50 dark:bg-gray-700 rounded-lg p-6 shadow">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{cerita.title || `Cerita ${index + 1}`}</h3>
+                <div key={cerita.id || index} className="bg-white dark:bg-gray-700 rounded-xl shadow-md p-6 border-l-4 border-pink-500 relative">
+                  <div className="absolute top-4 right-4 flex items-center space-x-2">
+                    {cerita.updatedAt && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200">
+                        Diedit
+                      </span>
+                    )}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                      {cerita.createdAt ? new Date(cerita.createdAt).toLocaleDateString('id-ID') : 'Tanggal tidak disimpan'}
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">{cerita.title || `Cerita ${index + 1}`}</h3>
+
                   <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                    Ditulis oleh: {cerita.author || 'Anda'} • {cerita.date || 'Tanggal tidak disimpan'}
+                    Ditulis oleh: {cerita.author || 'Anda'}
                   </p>
-                  <div
-                    className="text-gray-700 dark:text-gray-300 max-h-20 overflow-hidden prose prose-sm prose-pink dark:prose-invert"
-                    dangerouslySetInnerHTML={{ __html: cerita.content || 'Isi cerita belum ditambahkan...' }}
-                  />
-                  <div className="mt-4 flex justify-between items-center">
-                    <a href={`/protected/cerita/detail?id=${cerita.id}`} className="text-pink-600 hover:text-pink-800 dark:text-pink-400 dark:hover:text-pink-300 text-sm">
-                      Baca selengkapnya →
-                    </a>
+
+                  <div className="text-gray-700 dark:text-gray-300 mb-4 prose prose-pink dark:prose-invert max-h-32 overflow-hidden">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {cerita.content || 'Isi cerita belum ditambahkan...'}
+                    </ReactMarkdown>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-4">
+                      <a href={`/protected/cerita/detail?id=${cerita.id}`} className="text-pink-600 hover:text-pink-800 dark:text-pink-400 dark:hover:text-pink-300 text-sm font-medium">
+                        Baca selengkapnya →
+                      </a>
+                    </div>
+
                     <div className="flex space-x-2">
                       <a
                         href={`/protected/cerita/edit?id=${cerita.id}`}
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/50 dark:hover:bg-blue-800/50 dark:text-blue-300"
                       >
                         Edit
                       </a>
@@ -90,7 +110,7 @@ export default function CeritaPage() {
                             }
                           }
                         }}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/50 dark:hover:bg-red-800/50 dark:text-red-300"
                       >
                         Hapus
                       </button>

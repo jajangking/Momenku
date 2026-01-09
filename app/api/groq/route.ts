@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
+    const requestData = await request.json();
+    const { prompt, systemMessage } = requestData;
 
     if (!prompt) {
       return NextResponse.json({ message: 'Prompt is required' }, { status: 400 });
     }
+
+    const systemMsg = systemMessage || 'Anda adalah penulis cerita keluarga yang membantu pengguna menulis cerita yang indah dan bermakna tentang keluarga mereka. Buatlah cerita yang emosional, penuh kasih sayang, dan menggambarkan hubungan keluarga yang erat. Gunakan bahasa yang indah dan penuh perasaan.';
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah penulis cerita keluarga yang membantu pengguna menulis cerita yang indah dan bermakna tentang keluarga mereka. Buatlah cerita yang emosional, penuh kasih sayang, dan menggambarkan hubungan keluarga yang erat. Gunakan bahasa yang indah dan penuh perasaan.'
+            content: systemMsg
           },
           {
             role: 'user',

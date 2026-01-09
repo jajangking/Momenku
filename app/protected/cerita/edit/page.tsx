@@ -6,6 +6,7 @@ import { auth, getCeritaById, updateCerita } from '@/lib/firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User as FirebaseUser } from 'firebase/auth';
 import RichTextEditor from '@/components/RichTextEditor';
+import AIAssistant from '@/components/AIAssistant';
 
 export default function EditCeritaPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -19,15 +20,26 @@ export default function EditCeritaPage() {
   const [saving, setSaving] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [chatMessages, setChatMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai'; timestamp: Date }[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
   const ceritaId = searchParams.get('id');
+
+  const addMessage = (text: string, sender: 'user' | 'ai') => {
+    const newMessage = {
+      id: Date.now().toString(),
+      text,
+      sender,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, newMessage]);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && ceritaId) {
         setUser(user);
-        
+
         // Ambil cerita berdasarkan ID
         const { cerita: ceritaData, error } = await getCeritaById(ceritaId);
         if (ceritaData) {
@@ -70,10 +82,11 @@ export default function EditCeritaPage() {
 
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) {
-      alert('Silakan masukkan prompt untuk AI');
+      alert('Silakan masukkan teks yang ingin diproses oleh AI');
       return;
     }
 
+    addMessage(aiPrompt, 'user');
     setAiGenerating(true);
 
     try {
@@ -97,8 +110,181 @@ export default function EditCeritaPage() {
         ...prev,
         content: data.text
       }));
+
+      // Add AI response to chat
+      addMessage(`Saya telah memperbarui cerita berdasarkan permintaan Anda: "${aiPrompt}". Perubahan telah diterapkan ke editor.`, 'ai');
     } catch (error: any) {
-      alert('Gagal menghasilkan cerita dengan AI: ' + error.message);
+      const errorMessage = 'Gagal menghasilkan cerita dengan AI: ' + error.message;
+      alert(errorMessage);
+      addMessage(errorMessage, 'ai');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleAISimplify = async () => {
+    if (!formData.content.trim()) {
+      alert('Silakan tulis cerita terlebih dahulu');
+      return;
+    }
+
+    addMessage("Bantu saya menyederhanakan teks yang sudah saya tulis agar lebih mudah dipahami.", 'user');
+    setAiGenerating(true);
+
+    try {
+      const response = await fetch('/api/groq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: `Sederhanakan dan buat mudah dipahami teks berikut tanpa menghilangkan maknanya: ${formData.content}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menyederhanakan teks');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        content: data.text
+      }));
+
+      // Add AI response to chat
+      addMessage("Saya telah menyederhanakan teks Anda agar lebih mudah dipahami. Perubahan telah diterapkan ke editor.", 'ai');
+    } catch (error: any) {
+      const errorMessage = 'Gagal menyederhanakan teks dengan AI: ' + error.message;
+      alert(errorMessage);
+      addMessage(errorMessage, 'ai');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleAICleanUp = async () => {
+    if (!formData.content.trim()) {
+      alert('Silakan tulis cerita terlebih dahulu');
+      return;
+    }
+
+    addMessage("Bantu saya merapihkan teks yang sudah saya tulis, perbaiki tata bahasa dan ejaan.", 'user');
+    setAiGenerating(true);
+
+    try {
+      const response = await fetch('/api/groq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: `Perbaiki tata bahasa, ejaan, dan struktur kalimat dari teks berikut tanpa mengubah maknanya: ${formData.content}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal merapihkan teks');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        content: data.text
+      }));
+
+      // Add AI response to chat
+      addMessage("Saya telah merapihkan teks Anda, memperbaiki tata bahasa dan ejaan. Perubahan telah diterapkan ke editor.", 'ai');
+    } catch (error: any) {
+      const errorMessage = 'Gagal merapihkan teks dengan AI: ' + error.message;
+      alert(errorMessage);
+      addMessage(errorMessage, 'ai');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleAIFormat = async () => {
+    if (!formData.content.trim()) {
+      alert('Silakan tulis cerita terlebih dahulu');
+      return;
+    }
+
+    addMessage("Bantu saya memformat teks yang sudah saya tulis agar lebih rapih dan enak dibaca.", 'user');
+    setAiGenerating(true);
+
+    try {
+      const response = await fetch('/api/groq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: `Format teks berikut agar lebih rapih dan enak dibaca, tambahkan paragraf dan struktur yang sesuai: ${formData.content}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal memformat teks');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        content: data.text
+      }));
+
+      // Add AI response to chat
+      addMessage("Saya telah memformat teks Anda agar lebih rapih dan enak dibaca. Perubahan telah diterapkan ke editor.", 'ai');
+    } catch (error: any) {
+      const errorMessage = 'Gagal memformat teks dengan AI: ' + error.message;
+      alert(errorMessage);
+      addMessage(errorMessage, 'ai');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleAISuggestion = async (suggestion: string) => {
+    if (!suggestion.trim()) {
+      alert('Silakan masukkan permintaan untuk AI');
+      return;
+    }
+
+    addMessage(suggestion, 'user');
+    setAiGenerating(true);
+
+    try {
+      const response = await fetch('/api/groq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: suggestion
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal mendapatkan saran dari AI');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        content: data.text
+      }));
+
+      // Add AI response to chat
+      addMessage(`Berikut adalah saran saya berdasarkan permintaan Anda: "${suggestion}". Telah diterapkan ke editor.`, 'ai');
+    } catch (error: any) {
+      const errorMessage = 'Gagal mendapatkan saran dari AI: ' + error.message;
+      alert(errorMessage);
+      addMessage(errorMessage, 'ai');
     } finally {
       setAiGenerating(false);
     }
@@ -146,29 +332,14 @@ export default function EditCeritaPage() {
             </div>
             
             <div className="mb-6">
-              <label className="block text-gray-700 dark:text-gray-300 mb-2">Buat Cerita dengan AI</label>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  className="flex-grow px-4 py-2 rounded-l-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="Deskripsikan perubahan cerita yang ingin Anda buat..."
+              <label className="block text-gray-700 dark:text-gray-300 mb-2">Isi Cerita</label>
+              <div className="border border-gray-300 dark:border-gray-600 rounded-lg">
+                <RichTextEditor
+                  value={formData.content}
+                  onChange={(value) => setFormData({...formData, content: value})}
+                  placeholder="Tulis cerita keluarga Anda di sini... Gunakan toolbar untuk memformat teks."
                 />
-                <button
-                  type="button"
-                  onClick={handleAIGenerate}
-                  disabled={aiGenerating}
-                  className={`px-4 py-2 rounded-r-lg text-white font-medium ${
-                    aiGenerating
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  } transition duration-300`}
-                >
-                  {aiGenerating ? 'Menghasilkan...' : 'AI'}
-                </button>
               </div>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Ditenagai oleh AI Groq</p>
             </div>
 
             <div className="mb-6">
@@ -181,7 +352,7 @@ export default function EditCeritaPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex space-x-4">
               <button
                 type="submit"
@@ -206,6 +377,15 @@ export default function EditCeritaPage() {
           </form>
         </div>
       </main>
+      <AIAssistant
+        onSuggestion={handleAISuggestion}
+        onSimplify={handleAISimplify}
+        onCleanUp={handleAICleanUp}
+        onFormat={handleAIFormat}
+        isProcessing={aiGenerating}
+        chatMessages={chatMessages}
+        onSendMessage={(message) => addMessage(message, 'user')}
+      />
     </div>
   );
 }

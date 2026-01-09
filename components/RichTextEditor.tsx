@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface RichTextEditorProps {
   value: string;
@@ -10,20 +10,27 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const [isFocused, setIsFocused] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
-  const handleFormat = (command: string, value?: string) => {
+  // Update editor content when value prop changes
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value;
+    }
+  }, [value]);
+
+  const handleFormat = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
-  };
+  }, [onChange]);
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
-  };
+  }, [onChange]);
 
-  const insertImage = () => {
+  const insertImage = useCallback(() => {
     const url = prompt('Masukkan URL gambar:');
     if (url) {
       document.execCommand('insertImage', false, url);
@@ -31,14 +38,71 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         onChange(editorRef.current.innerHTML);
       }
     }
-  };
+  }, [onChange]);
 
-  // Fokus ke editor saat komponen dimuat jika value kosong
+  // Handle focus when component mounts
   useEffect(() => {
     if (value === '' && editorRef.current) {
-      editorRef.current.focus();
+      // Use a timeout to ensure the editor is rendered before focusing
+      const timer = setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.focus();
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [value]);
+
+  // Handle placeholder display
+  useEffect(() => {
+    if (editorRef.current) {
+      if (value === '' && !isFocused && placeholder) {
+        editorRef.current.innerHTML = `<span class="text-gray-400 italic">${placeholder}</span>`;
+        editorRef.current.classList.add('empty');
+      } else if (value === '' && isFocused && placeholder) {
+        editorRef.current.innerHTML = '';
+        editorRef.current.classList.remove('empty');
+      } else if (value !== '' && editorRef.current.classList.contains('empty')) {
+        editorRef.current.classList.remove('empty');
+      }
+    }
+  }, [value, isFocused, placeholder]);
+
+  const handleEditorFocus = () => {
+    setIsFocused(true);
+    if (editorRef.current && editorRef.current.classList.contains('empty')) {
+      editorRef.current.innerHTML = '';
+      editorRef.current.classList.remove('empty');
+    }
+  };
+
+  const handleEditorBlur = () => {
+    setIsFocused(false);
+    if (editorRef.current && editorRef.current.innerHTML === '' && placeholder) {
+      editorRef.current.innerHTML = `<span class="text-gray-400 italic">${placeholder}</span>`;
+      editorRef.current.classList.add('empty');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Handle Ctrl+B, Ctrl+I, Ctrl+U shortcuts
+    if (e.ctrlKey) {
+      switch (e.key) {
+        case 'b':
+          e.preventDefault();
+          handleFormat('bold');
+          break;
+        case 'i':
+          e.preventDefault();
+          handleFormat('italic');
+          break;
+        case 'u':
+          e.preventDefault();
+          handleFormat('underline');
+          break;
+      }
+    }
+  };
 
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
@@ -125,11 +189,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         className={`p-4 min-h-[200px] focus:outline-none ${
           isFocused ? 'ring-2 ring-pink-500' : ''
         } bg-white dark:bg-gray-700 text-gray-900 dark:text-white prose prose-pink dark:prose-invert`}
-        dangerouslySetInnerHTML={{ __html: value }}
         onInput={handleInput}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        placeholder={placeholder}
+        onFocus={handleEditorFocus}
+        onBlur={handleEditorBlur}
+        onKeyDown={handleKeyDown}
       />
       <div className="p-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-t border-gray-300 dark:border-gray-600">
         Gunakan toolbar di atas untuk memformat teks Anda

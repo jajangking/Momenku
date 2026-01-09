@@ -6,6 +6,8 @@ import { auth, getCeritaById, deleteCerita } from '@/lib/firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User as FirebaseUser } from 'firebase/auth';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function DetailCeritaPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -20,7 +22,7 @@ export default function DetailCeritaPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && ceritaId) {
         setUser(user);
-        
+
         // Ambil cerita berdasarkan ID
         const { cerita: ceritaData, error } = await getCeritaById(ceritaId);
         if (ceritaData) {
@@ -41,7 +43,7 @@ export default function DetailCeritaPage() {
 
   const handleDelete = async () => {
     if (!ceritaId) return;
-    
+
     if (confirm('Apakah Anda yakin ingin menghapus cerita ini?')) {
       setDeleting(true);
       const { success, error } = await deleteCerita(ceritaId);
@@ -73,7 +75,7 @@ export default function DetailCeritaPage() {
           <div className="flex justify-between items-start mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{cerita?.title || 'Tanpa Judul'}</h1>
             <div className="flex space-x-2">
-              <Link 
+              <Link
                 href={`/protected/cerita/edit?id=${ceritaId}`}
                 className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 text-sm"
               >
@@ -83,8 +85,8 @@ export default function DetailCeritaPage() {
                 onClick={handleDelete}
                 disabled={deleting}
                 className={`px-4 py-2 rounded-lg text-sm ${
-                  deleting 
-                    ? 'bg-red-400 cursor-not-allowed' 
+                  deleting
+                    ? 'bg-red-400 cursor-not-allowed'
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }`}
               >
@@ -92,19 +94,27 @@ export default function DetailCeritaPage() {
               </button>
             </div>
           </div>
-          
+
           <div className="text-gray-600 dark:text-gray-400 text-sm mb-6">
-            Ditulis pada: {cerita?.date ? new Date(cerita.date).toLocaleDateString('id-ID') : 'Tanggal tidak disimpan'}
+            <div>Ditulis pada: {cerita?.createdAt ? new Date(cerita.createdAt).toLocaleDateString('id-ID') : 'Tanggal tidak disimpan'}</div>
+            {cerita?.updatedAt && (
+              <div className="mt-1">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200">
+                  Diedit pada: {new Date(cerita.updatedAt).toLocaleDateString('id-ID')}
+                </span>
+              </div>
+            )}
           </div>
-          
-          <div
-            className="prose prose-pink max-w-none dark:prose-invert text-gray-700 dark:text-gray-300 prose-headings:text-gray-900 prose-headings:dark:text-white prose-p:leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: cerita?.content || 'Isi cerita belum ditulis...' }}
-          />
+
+          <div className="prose prose-pink max-w-none dark:prose-invert text-gray-700 dark:text-gray-300 prose-headings:text-gray-900 prose-headings:dark:text-white prose-p:leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {cerita?.content || 'Isi cerita belum ditulis...'}
+            </ReactMarkdown>
+          </div>
         </div>
-        
+
         <div className="mt-6 text-center">
-          <Link 
+          <Link
             href="/protected/cerita"
             className="inline-block px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
